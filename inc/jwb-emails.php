@@ -264,8 +264,12 @@ function jwb_inject_dynamic_invoice_content( $order, $sent_to_admin, $plain_text
  * Because WooCommerce produces exactly one purchaser invoice per order, this
  * hook fires once per email, so the notice appears a single time regardless of
  * how many product types (IND / GIFT / GROUP / MULTIPLE) share the order.
+ *
+ * Placement: woocommerce_email_before_order_table at priority 11 — above the
+ * order summary breakdown, just after the dynamic study/coupon/button block
+ * (jwb_inject_dynamic_invoice_content runs at priority 10 on the same hook).
  */
-add_action( 'woocommerce_email_after_order_table', 'jwb_email_billing_descriptor_notice', 10, 4 );
+add_action( 'woocommerce_email_before_order_table', 'jwb_email_billing_descriptor_notice', 11, 4 );
 
 function jwb_email_billing_descriptor_notice( $order, $sent_to_admin, $plain_text, $email ) {
 	$invoice_emails = array( 'customer_processing_order', 'customer_completed_order', 'customer_invoice' );
