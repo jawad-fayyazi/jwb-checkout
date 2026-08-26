@@ -6,6 +6,49 @@ function jwb_force_html_content_type() {
 	return 'text/html';
 }
 
+// ---------------------------------------------------------------------------
+// Custom plugin email sender override
+// ---------------------------------------------------------------------------
+/**
+ * The FROM address / name the plugin's own emails are sent from.
+ *
+ * These force the Gift invitation, Multiple-Group invitation, and account-setup
+ * magic-link emails to send from Joanna's brand address instead of the WordPress
+ * default (wordpress@yourdomain). They are applied ONLY around the plugin's own
+ * wp_mail() calls (via jwb_begin_plugin_email / jwb_end_plugin_email), so
+ * WooCommerce order emails and every other site email are left untouched.
+ *
+ * Note: an SMTP plugin (e.g. WP Mail SMTP) with "Force From Email/Name" enabled
+ * will override these filters. For deliverability, joannaweaverbooks.com's
+ * SPF/DKIM must authorise the sending server.
+ */
+function jwb_plugin_email_from_address( $from_email ) {
+	return 'joanna@joannaweaverbooks.com';
+}
+
+function jwb_plugin_email_from_name( $from_name ) {
+	return 'Joanna Weaver Books';
+}
+
+/**
+ * Enable the plugin's email overrides (HTML content type + branded FROM).
+ * Always pair with jwb_end_plugin_email() immediately after the wp_mail() call.
+ */
+function jwb_begin_plugin_email() {
+	add_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
+	add_filter( 'wp_mail_from', 'jwb_plugin_email_from_address' );
+	add_filter( 'wp_mail_from_name', 'jwb_plugin_email_from_name' );
+}
+
+/**
+ * Remove the plugin's email overrides so no other wp_mail() call is affected.
+ */
+function jwb_end_plugin_email() {
+	remove_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
+	remove_filter( 'wp_mail_from', 'jwb_plugin_email_from_address' );
+	remove_filter( 'wp_mail_from_name', 'jwb_plugin_email_from_name' );
+}
+
 /**
  * Send the recipient activation email to a newly created user.
  *
@@ -57,18 +100,12 @@ function jwb_send_recipient_activation_email( $data ) {
 		$subject  = sprintf( __( 'You have received a gift from %s!', 'jwb-checkout' ), $sender_name );
 		$template = JWB_PLUGIN_DIR . 'templates/email/jwb-gift.php'; // New dedicated Gift template
 
-	} elseif ( 'group-study' === $product_type ) {
-		
-		// Placeholder for Phase 2 Group Flow
-		$subject  = __( 'You have been invited to a Group Study!', 'jwb-checkout' );
-		$template = JWB_PLUGIN_DIR . 'templates/email/jwb-group.php';
-		
 	} else {
-		
+
 		// Generic Fallback
 		$subject  = sprintf( __( '[%s] Your Course is Ready!', 'jwb-checkout' ), get_bloginfo( 'name' ) );
 		$template = JWB_PLUGIN_DIR . 'templates/email/recipient-activation.php';
-		
+
 	}
 
 	// Render and send the assigned template
@@ -76,9 +113,9 @@ function jwb_send_recipient_activation_email( $data ) {
 		ob_start();
 		include $template;
 		$body = ob_get_clean();
-        add_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
-        wp_mail( $email, $subject, $body );
-        remove_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
+		jwb_begin_plugin_email();
+		wp_mail( $email, $subject, $body );
+		jwb_end_plugin_email();
 	} else {
 		jwb_log( array( 'error' => 'Email template missing', 'template' => $template ) );
 	}
@@ -117,9 +154,9 @@ function jwb_send_multiple_group_activation_email( $data ) {
 		ob_start();
 		include $template;
 		$body = ob_get_clean();
-		add_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
+		jwb_begin_plugin_email();
 		wp_mail( $email, $subject, $body );
-		remove_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
+		jwb_end_plugin_email();
 	} else {
 		jwb_log( array( 'error' => 'Multiple Group Email template missing', 'template' => $template ) );
 	}
@@ -320,9 +357,9 @@ function jwb_send_account_creation_email( $user_id ) {
 		include $template;
 		$body = ob_get_clean();
 
-		add_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
+		jwb_begin_plugin_email();
 		wp_mail( $user->user_email, $subject, $body );
-		remove_filter( 'wp_mail_content_type', 'jwb_force_html_content_type' );
+		jwb_end_plugin_email();
 	} else {
 		jwb_log( array( 'error' => 'Account Creation Email template missing', 'template' => $template ) );
 	}
