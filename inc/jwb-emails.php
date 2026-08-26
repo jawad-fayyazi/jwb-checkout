@@ -250,6 +250,43 @@ function jwb_inject_dynamic_invoice_content( $order, $sent_to_admin, $plain_text
 }
 
 // ---------------------------------------------------------------------------
+// Buyer Invoice: Credit-card billing descriptor notice
+// ---------------------------------------------------------------------------
+/**
+ * Print "Charge will appear on your credit card statement as Joanna Weaver Books"
+ * on the purchaser's invoice.
+ *
+ * Scope: buyer-facing order emails only — Processing, Completed, and the
+ * Invoice/Order-details email. It is intentionally NOT added to the admin New
+ * Order email or to the gift-recipient / group-leader / account-setup emails,
+ * because those recipients are never charged.
+ *
+ * Because WooCommerce produces exactly one purchaser invoice per order, this
+ * hook fires once per email, so the notice appears a single time regardless of
+ * how many product types (IND / GIFT / GROUP / MULTIPLE) share the order.
+ */
+add_action( 'woocommerce_email_after_order_table', 'jwb_email_billing_descriptor_notice', 10, 4 );
+
+function jwb_email_billing_descriptor_notice( $order, $sent_to_admin, $plain_text, $email ) {
+	$invoice_emails = array( 'customer_processing_order', 'customer_completed_order', 'customer_invoice' );
+
+	if ( $sent_to_admin || ! isset( $email->id ) || ! in_array( $email->id, $invoice_emails, true ) ) {
+		return;
+	}
+
+	$notice = __( 'Charge will appear on your credit card statement as "Joanna Weaver Books".', 'jwb-checkout' );
+
+	if ( $plain_text ) {
+		echo "\n" . esc_html( $notice ) . "\n";
+		return;
+	}
+
+	echo '<p style="margin: 0 0 24px 0; padding: 12px 16px; background-color: #f7f7f7; border: 1px solid #e0e0e0; color: #444444; font-family: \'Helvetica Neue\', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5;">';
+	echo esc_html( $notice );
+	echo '</p>';
+}
+
+// ---------------------------------------------------------------------------
 // Account Creation Email (Magic Link)
 // ---------------------------------------------------------------------------
 function jwb_send_account_creation_email( $user_id ) {
